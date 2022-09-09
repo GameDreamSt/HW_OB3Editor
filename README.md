@@ -11,3 +11,6 @@ Uses Visual studio 2019
 7. Save file (duhh)
 8. Use meters instead of game units
 9. Crappy Randomizer
+
+## Note
+It closely works with the .S0U file (the one which loads the model meshes). If the object you have added is missing from the .S0U, the game will crash!
