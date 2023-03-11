@@ -144,7 +144,7 @@ void PrintInfoAboutObject(LevelObject* objectInfo)
 	info += "RenderableId: " + to_string(objectInfo->RenderableId) + '\n';
 	info += "ControllableId: " + to_string(objectInfo->ControllableId) + '\n';
 	info += "ShadowFlags: " + to_string(objectInfo->ShadowFlags) + '\n';
-	info += "Permanent: " + to_string(objectInfo->Permanent) + '\n';
+	info += "Permanent flag: " + to_string(objectInfo->Permanent) + '\n';
 	info += "TeamNumber: " + to_string(objectInfo->TeamNumber) + '\n';
 	info += "SpecificData: " + to_string(objectInfo->SpecificData) + '\n';
 	info += ExtraDataToString(objectInfo->ExtraDataSize);
@@ -762,13 +762,13 @@ again:;
 			<< "\n2. Main weapon: " << loadedObjects[id]->AttachName
 			<< "\n3. Position: " << CheckUnits(loadedObjects[id]->ObjMatrix.t.x) << " " << CheckUnits(loadedObjects[id]->ObjMatrix.t.y) << " " << CheckUnits(loadedObjects[id]->ObjMatrix.t.z)
 			<< "\n4. Rotation: " << to_string(MatrixToYRot(loadedObjects[id]->ObjMatrix.m)) << " degrees"
-			<< "\n5. Normal flag: " << loadedObjects[id]->ObjMatrix.Normal
-			<< "\n6. Renderable ID: " << loadedObjects[id]->RenderableId
-			<< "\n7. Controllable ID: " << loadedObjects[id]->ControllableId
-			<< "\n8. ShadowFlags Code: " << loadedObjects[id]->ShadowFlags
-			<< "\n9. Is permanent: " << loadedObjects[id]->Permanent
-			<< "\n10. Team number: " << loadedObjects[id]->TeamNumber
-			<< "\n11. Specific data code: " << loadedObjects[id]->SpecificData
+			<< "\n5. Normal flag: " << to_string(loadedObjects[id]->ObjMatrix.Normal)
+			<< "\n6. Renderable ID: " << to_string(loadedObjects[id]->RenderableId)
+			<< "\n7. Controllable ID: " << to_string(loadedObjects[id]->ControllableId)
+			<< "\n8. ShadowFlags Code: " << to_string(loadedObjects[id]->ShadowFlags)
+			<< "\n9. Permanent flag: " << to_string(loadedObjects[id]->Permanent)
+			<< "\n10. Team number: " << to_string(loadedObjects[id]->TeamNumber)
+			<< "\n11. Specific data code: " << to_string(loadedObjects[id]->SpecificData)
 			<< "\n12. Change addons: " << ExtraDataToString(loadedObjects[id]->ExtraDataSize)
 			<< "13. Stop\n";
 
@@ -777,6 +777,7 @@ again:;
 		if (choice < 1 || choice > 12)
 			break;
 
+		unsigned int tmp_u_int;
 		float angles;
 		switch (choice)
 		{
@@ -829,8 +830,9 @@ again:;
 			break;
 
 		case 9:
-			cout << "Enter permanent flag 0/1\n";
-			cin >> loadedObjects[id]->Permanent;
+			cout << "Enter permanent flag (0-255)\n";
+			cin >> tmp_u_int;
+			loadedObjects[id]->Permanent = (char)tmp_u_int;
 			needsToSave = true;
 			break;
 
