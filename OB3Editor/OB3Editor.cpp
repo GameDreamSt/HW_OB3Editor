@@ -6,7 +6,9 @@
 
 #include <algorithm>
 #include <cctype>
+
 #include <unordered_map>
+#include <unordered_set>
 
 #include <Files.h>
 #include <ObjectDescriptors.h>
@@ -619,11 +621,23 @@ void AddObject()
 
 	newObj->TeamNumber = teamNumber;
 
-	if (loadedObjects.size() > 0)
-	{
-		newObj->RenderableId = loadedObjects[loadedObjects.size() - 1]->RenderableId + 1;
-		newObj->entryID = loadedObjects.size();
-	}
+	unordered_set<unsigned long> loadedIds;
+	for (size_t i = 0; i < loadedObjects.size(); i++)
+		loadedIds.insert(loadedObjects[i]->RenderableId);
+
+	unsigned long unusedRendId = -1;
+	for (unsigned long i = 1; i < loadedObjects.size() + 10; i++)
+		if (loadedIds.count(i) == 0)
+		{
+			unusedRendId = i;
+			break;
+		}
+
+	if (unusedRendId == -1)
+		unusedRendId = rand() % 1000 + loadedObjects.size() + 10;
+
+	newObj->RenderableId = unusedRendId;
+	newObj->entryID = loadedObjects.size();
 
 	newObj->ObjMatrix.t = pos;
 
