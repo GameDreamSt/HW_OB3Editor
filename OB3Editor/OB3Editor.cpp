@@ -710,30 +710,80 @@ float VectorAngle(VertexUnPad foo, VertexUnPad bar) // IN RADIANS
 const static float Deg2Rad = (PI * 2.) / 360.;
 const static float Rad2Deg = 360. / (PI * 2.);
 
-float MatrixToYRot(VertexUnPad m[3])
+#define E 0.00001
+
+bool EpsilonFloatEquals(float f, float to)
 {
-	VertexUnPad north{};
-	north.x = 0;
-	north.y = 0;
-	north.z = 1;
-
-	VertexUnPad east{};
-	north.x = 1;
-	north.y = 0;
-	north.z = 0;
-
-	VertexUnPad west{};
-	north.x = -1;
-	north.y = 0;
-	north.z = 0;
-
-	if (VectorAngle(east, m[2]) < VectorAngle(north, m[2]))
-		return VectorAngle(north, m[2]) * Rad2Deg;
-	else
-		return VectorAngle(north, m[2]) * Rad2Deg * 2;
+	return f > to - E && f < to + E;
 }
 
-void RotateByY(VertexUnPad &vert, float alpha)
+VertexUnPad MatrixToEulerAngles(VertexUnPad m[3])
+{
+	/*eulers.x = atan2(m[2].y, m[2].z) * Rad2Deg;
+	eulers.y = atan2(-m[2].x, sqrt(m[2].y * m[2].y + m[2].z * m[2].z)) * Rad2Deg;
+	eulers.z = atan2(m[1].x, m[0].x) * Rad2Deg;*/
+
+	float R11 = m[0].x;
+	float R12 = m[0].y;
+	float R13 = m[0].z;
+
+	float R21 = m[1].x;
+	float R23 = m[1].z;
+
+	float R31 = m[2].x;
+	float R32 = m[2].y;
+	float R33 = m[2].z;
+
+	float E1, E2, E3, delta;
+	if (EpsilonFloatEquals(R13, 1) || EpsilonFloatEquals(R13, -1))
+	{
+		E3 = 0;
+		delta = atan2(R12, R13);
+
+		if (EpsilonFloatEquals(R13, -1))
+		{
+			E2 = PI / 2;
+			E1 = E3 + delta;
+		}
+		else
+		{
+			E2 = -PI / 2;
+			E1 = -E3 + delta;
+		}
+	}
+	else
+	{
+		E2 = -asin(R13);
+		E1 = atan2(R23 / cos(E2), R33 / cos(E2));
+		E3 = atan2(R12 / cos(E2), R11 / cos(E2));
+	}
+
+	VertexUnPad eulers = VertexUnPad(E1, E2, E3);
+
+	eulers.x *= Rad2Deg;
+	eulers.y *= Rad2Deg;
+	eulers.z *= Rad2Deg;
+
+	return eulers;
+}
+
+string EulerAnglesToString(VertexUnPad eulers)
+{
+	return "X:" + to_string(eulers.x) + "  Y:" + to_string(eulers.y) + "  Z:" + to_string(eulers.z);
+}
+
+
+
+void RotateByX(VertexUnPad& vec, float alpha)
+{
+	float Y = vec.y;
+	float Z = vec.z;
+
+	vec.y = Y * cos(alpha) - Z * sin(alpha);
+	vec.z = Y * sin(alpha) + Z * cos(alpha);
+}
+
+void RotateByY(VertexUnPad& vert, float alpha)
 {
 	float X = vert.x;
 	float Z = vert.z;
@@ -742,11 +792,28 @@ void RotateByY(VertexUnPad &vert, float alpha)
 	vert.z = -X * sin(alpha) + Z * cos(alpha);
 }
 
-void RotateMatByY(MatrixUnPad &objMat, float alpha)
+void RotateByZ(VertexUnPad& vec, float alpha)
 {
-	RotateByY(objMat.m[0], alpha);
-	RotateByY(objMat.m[1], alpha);
-	RotateByY(objMat.m[2], alpha);
+	float X = vec.x;
+	float Y = vec.y;
+
+	vec.x = X * cos(alpha) - Y * sin(alpha);
+	vec.y = X * sin(alpha) + Y * cos(alpha);
+}
+
+void RotateMatByVector(MatrixUnPad &objMat, VertexUnPad euler)
+{
+	RotateByX(objMat.m[0], euler.x);
+	RotateByX(objMat.m[1], euler.x);
+	RotateByX(objMat.m[2], euler.x);
+
+	RotateByY(objMat.m[0], euler.y);
+	RotateByY(objMat.m[1], euler.y);
+	RotateByY(objMat.m[2], euler.y);
+
+	RotateByZ(objMat.m[0], euler.z);
+	RotateByZ(objMat.m[1], euler.z);
+	RotateByZ(objMat.m[2], euler.z);
 }
 
 void EditObject()
@@ -775,7 +842,7 @@ again:;
 			<< "\n1. Type name: " << loadedObjects[id]->TypeName
 			<< "\n2. Main weapon: " << loadedObjects[id]->AttachName
 			<< "\n3. Position: " << CheckUnits(loadedObjects[id]->ObjMatrix.t.x) << " " << CheckUnits(loadedObjects[id]->ObjMatrix.t.y) << " " << CheckUnits(loadedObjects[id]->ObjMatrix.t.z)
-			<< "\n4. Rotation: " << to_string(MatrixToYRot(loadedObjects[id]->ObjMatrix.m)) << " degrees"
+			<< "\n4. Rotation: " << EulerAnglesToString(MatrixToEulerAngles(loadedObjects[id]->ObjMatrix.m)) << " degrees"
 			<< "\n5. Normal flag: " << to_string(loadedObjects[id]->ObjMatrix.Normal)
 			<< "\n6. Renderable ID: " << to_string(loadedObjects[id]->RenderableId)
 			<< "\n7. Controllable ID: " << to_string(loadedObjects[id]->ControllableId)
@@ -792,7 +859,7 @@ again:;
 			break;
 
 		unsigned int tmp_u_int;
-		float angles;
+		VertexUnPad angles;
 		switch (choice)
 		{
 		case 1:
@@ -811,11 +878,19 @@ again:;
 			break;
 
 		case 4:
-			cout << "What angle do you want your object to look at? 0 is north, 90 is east...\n";
-			cin >> angles;
+			cout << "What angle do you want your object to look at? from -180 to 180\nx(up/down):";
+			cin >> angles.x;
+			cout << "y(left/right/around):";
+			cin >> angles.y;
+			cout << "z(forward swirl):";
+			cin >> angles.z;
+
+			angles.x *= Deg2Rad;
+			angles.y *= Deg2Rad;
+			angles.z *= Deg2Rad;
 
 			loadedObjects[id]->ResetRotation();
-			RotateMatByY(loadedObjects[id]->ObjMatrix, angles * Deg2Rad);
+			RotateMatByVector(loadedObjects[id]->ObjMatrix, angles);
 			needsToSave = true;
 			break;
 

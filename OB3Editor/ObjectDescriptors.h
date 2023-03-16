@@ -9,6 +9,9 @@ class VertexUnPad
 {
 public:
 	float x, y, z;
+
+	VertexUnPad() { x = y = z = 0; }
+	VertexUnPad(float X, float Y, float Z) { x = X; y = Y; z = Z; }
 };
 
 class MatrixUnPad
