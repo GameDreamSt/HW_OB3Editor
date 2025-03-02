@@ -156,8 +156,6 @@ void PrintInfoAboutObject(LevelObject* objectInfo)
 
 vector<LevelObject*> loadedObjects;
 
-unsigned long interestingHalfBytes[10] = { 'CJBO', '3JBO', '3JBO', '3JBO', '3JBO', '3JBO', '3JBO', '3JBO', '3JBO', '3JBO' };
-string interestingHalfBytesStr[10] = { "CJBO", "3JBO", "3JBO", "3JBO", "3JBO", "3JBO", "3JBO", "3JBO", "3JBO", "3JBO" };
 bool LoadOB3File(string filePath)
 {
 	string fileName = GetFileName(filePath);
@@ -175,28 +173,19 @@ bool LoadOB3File(string filePath)
 	if (allData.size() <= 4)
 		return false;
 
-	unsigned long versionRaw = *(unsigned long*)(&allData[0]);
 	string fileVersion = "";
-
-	for (int j = 0; j < 10; j++)
-		if (versionRaw == interestingHalfBytes[j])
-		{
-			fileVersion = interestingHalfBytesStr[j];
-			reverse(fileVersion.begin(), fileVersion.end());
-			//cout << "Version: " << fileVersion << '\n';
-			break;
-		}
-
-	if (fileVersion == "")
-	{
-		cout << "No valid file version found!\n";
-		return false;
-	}
+	fileVersion.resize(4);
+	memcpy(&fileVersion[0], &allData[0], 4);
 
 	if (fileVersion != "OBJC")
 	{
-		cout << "The file version is not OBJC, conversions are not supported!\n";
-		return false;
+		cout << "The file version is not OBJC, but {" << fileVersion << "}!\nAre you sure you want to continue? It might crash or allocate all your memory! [Y/N]\n";
+
+		string choice = "";
+		cin >> choice;
+
+		if(choice[0] != 'Y' && choice[0] != 'y')
+			return false;
 	}
 
 	if (allData.size() <= 8)
@@ -204,6 +193,12 @@ bool LoadOB3File(string filePath)
 
 	unsigned long entries = ReadULong(allData, 4); // Number of entires is stored in the file now
 	
+	if (entries == 0)
+	{
+		cout << "Entry count is 0! Reading will stop\n";
+		return false;
+	}
+
 	unsigned int descriptorSize = sizeof(ObjectDescription12); // 148
 	unsigned int matrixSize = sizeof(MatrixUnPad); // 52 = 4 * 12 + 1
 	unsigned int vertexSize = sizeof(VertexUnPad); // 12
@@ -213,8 +208,22 @@ bool LoadOB3File(string filePath)
 	loadedObjects.clear();
 	for (unsigned long i = 0; i < entries; i++)
 	{
+		if (cursor >= allData.size())
+		{
+			cout << "There are less entries then expected! Expected{"<< entries <<"}, actual{"<< i <<"}\n";
+			system("pause");
+			break;
+		}
+
 		ObjectDescription12* ptr = (struct ObjectDescription12*)(&allData[cursor]);
 		
+		if (ptr->dwSize + cursor > allData.size())
+		{
+			cout << "Incomplete object detected! Entry {" << i << "}, expected {"<< ptr->dwSize <<"} bytes, but only {"<< allData.size() - cursor <<"} are left\n";
+			system("pause");
+			break;
+		}
+
 		vector<unsigned long> ExtraDataSize;
 		ExtraDataSize.resize(ptr->ExtraDataSize[0]);
 		int addons = ptr->ExtraDataSize[0];
@@ -684,6 +693,23 @@ again:;
 	needsToSave = true;
 
 	cout << id << " " << name << " removed!\n";
+	system("pause");
+}
+
+void RemoveAllObjects()
+{
+	char answer;
+	cout << "Are you sure you want to remove ALL objects? Y/N\n";
+	cin >> answer;
+
+	if (answer != 'Y' && answer != 'y')
+		return;
+
+	loadedObjects.clear();
+
+	needsToSave = true;
+
+	cout << "All objects removed!\n";
 	system("pause");
 }
 
@@ -1195,11 +1221,12 @@ int main(int argc, char* argv[])
 				<< "4. Add object\n"
 				<< "5. Edit object\n"
 				<< "6. Remove object\n"
-				<< "7. Save file\n"
-				<< "8. Use meters instead of game units ["<< MetresOn() <<"]\n"
-				<< "9. Randomizer\n"
-				<< "10. Credits\n"
-				<< "11. Quit\n";
+				<< "7. Remove all objects\n"
+				<< "8. Save file\n"
+				<< "9. Use meters instead of game units ["<< MetresOn() <<"]\n"
+				<< "10. Randomizer\n"
+				<< "11. Credits\n"
+				<< "12. Quit\n";
 
 			int choice = -1;
 			cin >> choice;
@@ -1220,12 +1247,14 @@ int main(int argc, char* argv[])
 			else if (choice == 6)
 				RemoveObject();
 			else if (choice == 7)
-				SaveFile();
+				RemoveAllObjects();
 			else if (choice == 8)
-				ToggleMetres();
+				SaveFile();
 			else if (choice == 9)
-				Ranzomizer();
+				ToggleMetres();
 			else if (choice == 10)
+				Ranzomizer();
+			else if (choice == 11)
 				PrintCredits();
 			else
 				editing = false;
