@@ -13,35 +13,11 @@
 #include <Files.h>
 #include <ObjectDescriptors.h>
 #include <KnownObjs.h>
+#include <Presets.h>
+#include <Object.h>
+#include <Units.h>
 
 using namespace std;
-
-bool usingMetres = false;
-
-#define GAME_UNITS_IN_METER 51.2f;
-
-float GameUnitsToMetres(float units)
-{
-	return units / GAME_UNITS_IN_METER;
-}
-
-float CheckUnits(float units)
-{
-	if (usingMetres)
-		return GameUnitsToMetres(units);
-	else
-		return units;
-}
-
-void PrintLowInfo(vector<LevelObject*>& objs)
-{
-	char sep = ' ';
-	for (size_t i = 0; i < objs.size(); i++)
-	{
-		cout << "ID: " << to_string(i) << " : {" << objs[i]->TypeName << "} "
-			<< CheckUnits(objs[i]->ObjMatrix.t.x) << sep << CheckUnits(objs[i]->ObjMatrix.t.y) << sep << CheckUnits(objs[i]->ObjMatrix.t.z) << '\n';
-	}
-}
 
 bool ReadAllBytes(string filePath, vector<unsigned char> &data)
 {
@@ -154,8 +130,6 @@ void PrintInfoAboutObject(LevelObject* objectInfo)
 	cout << info;
 }
 
-vector<LevelObject*> loadedObjects;
-
 bool LoadOB3File(string filePath)
 {
 	string fileName = GetFileName(filePath);
@@ -205,7 +179,7 @@ bool LoadOB3File(string filePath)
 
 	int cursor = 8;
 
-	loadedObjects.clear();
+	GetLoadedObjects()->clear();
 	for (unsigned long i = 0; i < entries; i++)
 	{
 		if (cursor >= allData.size())
@@ -217,7 +191,7 @@ bool LoadOB3File(string filePath)
 
 		ObjectDescription12* ptr = (struct ObjectDescription12*)(&allData[cursor]);
 		
-		if (ptr->dwSize + cursor > allData.size())
+		if (ptr->dwSize + (size_t)cursor > allData.size())
 		{
 			cout << "Incomplete object detected! Entry {" << i << "}, expected {"<< ptr->dwSize <<"} bytes, but only {"<< allData.size() - cursor <<"} are left\n";
 			system("pause");
@@ -232,7 +206,7 @@ bool LoadOB3File(string filePath)
 
 		LevelObject* newObject = new LevelObject(*ptr, ExtraDataSize);
 		newObject->entryID = i;
-		loadedObjects.push_back(newObject);
+		GetLoadedObjects()->push_back(newObject);
 
 		cursor += ptr->dwSize; // Offset to read next entry
 	}
@@ -282,22 +256,17 @@ bool ReadFile(string path)
 	return true;
 }
 
-void PrintDetailedInfo(vector<LevelObject*>& objs)
+void PrintDetailedInfo(vector<LevelObject*>* objects)
 {
-	for (size_t i = 0; i < objs.size(); i++)
-		PrintInfoAboutObject(objs.at(i));
+	for (size_t i = 0; i < objects->size(); i++)
+		PrintInfoAboutObject(objects->at(i));
 
 	system("pause");
 }
 
 void PrintDetailedInfo()
 {
-	PrintDetailedInfo(loadedObjects);
-}
-
-void PrintLowInfo()
-{
-	PrintLowInfo(loadedObjects);
+	PrintDetailedInfo(GetLoadedObjects());
 }
 
 char asciitolower(char in) {
@@ -318,9 +287,11 @@ void FindObject()
 	vector<LevelObject*> foundObjects;
 
 	string s1;
-	for (size_t i = 0; i < loadedObjects.size(); i++)
+	auto objects = GetLoadedObjects();
+	for (size_t i = 0; i < objects->size(); i++)
 	{
-		s1 = string(loadedObjects[i]->TypeName);
+		LevelObject* foundObject = objects->at(i);
+		s1 = string(foundObject->TypeName);
 
 		if (nameChunk.size() > s1.size())
 			continue;
@@ -330,7 +301,7 @@ void FindObject()
 		if (s1.find(nameChunk) == std::string::npos)
 			continue;
 
-		foundObjects.push_back(loadedObjects[i]);
+		foundObjects.push_back(foundObject);
 	}
 
 	if (foundObjects.size() == 0)
@@ -341,7 +312,7 @@ void FindObject()
 	}
 
 	cout << "Found " << to_string(foundObjects.size()) << " objects!\n";
-	PrintDetailedInfo(foundObjects);
+	PrintDetailedInfo(&foundObjects);
 }
 
 bool needsToSave = false;
@@ -358,14 +329,14 @@ void SaveFile()
 
 	write << "OBJC";
 
-	unsigned long entries = (unsigned long)loadedObjects.size();
+	unsigned long entries = (unsigned long)GetLoadedObjects()->size();
 	char* tempData = (char*)&entries;
 	write.write(tempData, sizeof(unsigned long));
 
 	ObjectDescription12 dummyDesc{};
-	for (size_t i = 0; i < loadedObjects.size(); i++)
+	for (size_t i = 0; i < GetLoadedObjects()->size(); i++)
 	{
-		LevelObject* ptr = loadedObjects[i];
+		LevelObject* ptr = GetLoadedObjects()->at(i);
 
 		dummyDesc.dwSize = ptr->dwSize;
 
@@ -408,131 +379,6 @@ void SaveFile()
 	system("pause");
 }
 
-int GetTypeChoice(string promptText, vector<string> &printStuff)
-{
-	string out = "";
-
-	for (size_t i = 0; i < printStuff.size(); i++)
-		out += to_string(i) + ". " + printStuff[i] + "\n";
-
-	out += promptText;
-	cout << out;
-
-	int type = -1;
-	cin >> type;
-
-	return type;
-}
-
-int GetTypeChoicePair(string promptText, vector<pair<string, unsigned long>>& printStuff)
-{
-	string out = "";
-
-	for (size_t i = 0; i < printStuff.size(); i++)
-		out += to_string(i) + ". " + printStuff[i].first + "\n";
-
-	out += promptText;
-	cout << out;
-
-	int type = -1;
-	cin >> type;
-
-	return type;
-}
-
-string GetTypeName()
-{
-startAgain:;
-
-	system("cls");
-
-	int type = GetTypeChoice("Choose an object type, type -1 for custom type\n", knownObjs);
-
-	string typeName = "";
-	if (type == -1)
-	{
-		cout << "ok smartypants, what is the object type name?\n";
-		cin >> typeName;
-	}
-	else
-	{
-		if (type > knownObjs.size() || type < 0)
-		{
-			cout << "Hey it's out of range! What are you doing?? >:(\n";
-			system("pause");
-			goto startAgain;
-		}
-
-		typeName = knownObjs[type];
-	}
-
-	return typeName;
-}
-
-string GetAttachName()
-{
-startAgainB:;
-
-	string attachName = "";
-	int type = GetTypeChoice("Choose an weapon attachment type, type -1 to skip, -2 for custom type, \n", knownWeapons);
-
-	if (type == -2)
-	{
-		cout << "Ok smartypants, what is the object type name?\n";
-		cin >> attachName;
-	}
-	else if (type != -1)
-	{
-		if (type > knownWeapons.size() || type < 0)
-		{
-			cout << "Hey it's out of range! What are you doing?? >:(\n";
-			system("pause");
-			goto startAgainB;
-		}
-
-		attachName = knownWeapons[type];
-	}
-
-	return attachName;
-}
-
-VertexUnPad GetPosition()
-{
-	float readF;
-	VertexUnPad pos{};
-
-	if (usingMetres)
-	{
-		cout << "What should the position be for this unit? (in meters)\nx: ";
-		cin >> readF;
-		pos.x = readF * GAME_UNITS_IN_METER;
-
-		cout << "y: ";
-		cin >> readF;
-		pos.y = readF * GAME_UNITS_IN_METER;
-
-		cout << "z: ";
-		cin >> readF;
-		pos.z = readF * GAME_UNITS_IN_METER;
-	}
-	else
-	{
-		cout << "What should the position be for this unit? (in \"game units\" (NOT METERS >:( ))\nx: ";
-		cin >> readF;
-		pos.x = readF;
-
-		cout << "y: ";
-		cin >> readF;
-		pos.y = readF;
-
-		cout << "z: ";
-		cin >> readF;
-		pos.z = readF;
-	}
-
-	return pos;
-}
-
 unsigned long GetTeamNumber()
 {
 	unsigned long teamNumber = 0; // 0 - player
@@ -545,7 +391,8 @@ unsigned long GetTeamNumber()
 
 int AddAddon(LevelObject* newObj)
 {
-	int type = GetTypeChoicePair("Select an addon you want to add. (-1 to stop, -2 to enter custom code)\n", knownAddons);
+	auto addons = GetKnownAddons();
+	int type = GetTypeChoicePair("Select an addon you want to add. (-1 to stop, -2 to enter custom code)\n", addons);
 
 	if (type == -2)
 	{
@@ -557,19 +404,19 @@ int AddAddon(LevelObject* newObj)
 	}
 	else if (type != -1)
 	{
-		if (type >= knownAddons.size() || type < 0)
+		if (type >= addons->size() || type < 0)
 		{
 			cout << "Selection out of range!\n";
 			system("pause");
 			return false;
 		}
 
-		unsigned long ul = knownAddons[type].second; // XX 00 00 00
+		unsigned long ul = addons->at(type).second; // XX 00 00 00
 		if (ul == 87) // It's a soulcatcher, add a soulname in a hacky way... these damn devs
 		{
-			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", knownSouls);
+			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", GetKnownSouls());
 
-			choice = knownSouls[choice].second << 16; // YY 00 00 00 -> 00 00 YY 00
+			choice = addons->at(choice).second << 16; // YY 00 00 00 -> 00 00 YY 00
 			ul = ul | choice; // XX 00 YY 00
 		}
 
@@ -582,7 +429,8 @@ int AddAddon(LevelObject* newObj)
 
 void ReplaceAddon(LevelObject* newObj, int where)
 {
-	int type = GetTypeChoicePair("Select an addon you want to use for replacement. (-1 to enter custom code)\n", knownAddons);
+	auto addons = GetKnownAddons();
+	int type = GetTypeChoicePair("Select an addon you want to use for replacement. (-1 to enter custom code)\n", addons);
 
 	if (type == -1)
 	{
@@ -593,19 +441,19 @@ void ReplaceAddon(LevelObject* newObj, int where)
 	}
 	else if (type > 0)
 	{
-		if (type >= knownAddons.size())
+		if (type >= addons->size())
 		{
 			cout << "Selection out of range!\n";
 			system("pause");
 			return;
 		}
 
-		unsigned long ul = knownAddons[type].second; // XX 00 00 00
+		unsigned long ul = addons->at(type).second; // XX 00 00 00
 		if (ul == 87) // It's a soulcatcher, add a soulname in a hacky way... these damn devs
 		{
-			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", knownSouls);
+			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", GetKnownSouls());
 
-			choice = knownSouls[choice].second << 16; // YY 00 00 00 -> 00 00 YY 00
+			choice = addons->at(choice).second << 16; // YY 00 00 00 -> 00 00 YY 00
 			ul = ul | choice; // XX 00 YY 00
 		}
 
@@ -613,7 +461,7 @@ void ReplaceAddon(LevelObject* newObj, int where)
 	}
 }
 
-void AddObject()
+void AddSceneObject()
 {
 	string typeName = GetTypeName();
 	string attachName = GetAttachName();
@@ -630,23 +478,8 @@ void AddObject()
 
 	newObj->TeamNumber = teamNumber;
 
-	unordered_set<unsigned long> loadedIds;
-	for (size_t i = 0; i < loadedObjects.size(); i++)
-		loadedIds.insert(loadedObjects[i]->RenderableId);
-
-	unsigned long unusedRendId = -1;
-	for (unsigned long i = 1; i < loadedObjects.size() + 10; i++)
-		if (loadedIds.count(i) == 0)
-		{
-			unusedRendId = i;
-			break;
-		}
-
-	if (unusedRendId == -1)
-		unusedRendId = rand() % 1000 + loadedObjects.size() + 10;
-
-	newObj->RenderableId = unusedRendId;
-	newObj->entryID = loadedObjects.size();
+	newObj->RenderableId = GetUnusedRenderableID();
+	newObj->entryID = (unsigned long)GetLoadedObjects()->size();
 
 	newObj->ObjMatrix.t = pos;
 
@@ -657,7 +490,7 @@ void AddObject()
 	if (answer == "Y" || answer == "y")
 		while (!AddAddon(newObj));
 
-	loadedObjects.push_back(newObj);
+	GetLoadedObjects()->push_back(newObj);
 
 	needsToSave = true;
 
@@ -675,20 +508,20 @@ again:;
 	cout << "Which object do you want to remove?\n";
 	cin >> id;
 
-	if (id < 0 || id >= loadedObjects.size())
+	if (id < 0 || id >= GetLoadedObjects()->size())
 	{
 		cout << "ID is out of bounds!\n";
 		system("pause");
 		goto again;
 	}
 
-	string name = loadedObjects[id]->TypeName;
+	string name = GetLoadedObjects()->at(id)->TypeName;
 
-	delete loadedObjects[id];
-	loadedObjects.erase(loadedObjects.begin() + id);
+	delete GetLoadedObjects()->at(id);
+	GetLoadedObjects()->erase(GetLoadedObjects()->begin() + id);
 
-	for (int i = id; i < loadedObjects.size(); i++)
-		loadedObjects[i]->entryID = i;
+	for (int i = id; i < GetLoadedObjects()->size(); i++)
+		GetLoadedObjects()->at(i)->entryID = i;
 
 	needsToSave = true;
 
@@ -705,7 +538,7 @@ void RemoveAllObjects()
 	if (answer != 'Y' && answer != 'y')
 		return;
 
-	loadedObjects.clear();
+	GetLoadedObjects()->clear();
 
 	needsToSave = true;
 
@@ -732,114 +565,9 @@ float VectorAngle(VertexUnPad foo, VertexUnPad bar) // IN RADIANS
 	);
 }
 
-#define PI 3.14159265358979323846  /* pi */
-const static float Deg2Rad = (PI * 2.) / 360.;
-const static float Rad2Deg = 360. / (PI * 2.);
-
-#define E 0.00001
-
-bool EpsilonFloatEquals(float f, float to)
-{
-	return f > to - E && f < to + E;
-}
-
-VertexUnPad MatrixToEulerAngles(VertexUnPad m[3])
-{
-	/*eulers.x = atan2(m[2].y, m[2].z) * Rad2Deg;
-	eulers.y = atan2(-m[2].x, sqrt(m[2].y * m[2].y + m[2].z * m[2].z)) * Rad2Deg;
-	eulers.z = atan2(m[1].x, m[0].x) * Rad2Deg;*/
-
-	float R11 = m[0].x;
-	float R12 = m[0].y;
-	float R13 = m[0].z;
-
-	float R21 = m[1].x;
-	float R23 = m[1].z;
-
-	float R31 = m[2].x;
-	float R32 = m[2].y;
-	float R33 = m[2].z;
-
-	float E1, E2, E3, delta;
-	if (EpsilonFloatEquals(R13, 1) || EpsilonFloatEquals(R13, -1))
-	{
-		E3 = 0;
-		delta = atan2(R12, R13);
-
-		if (EpsilonFloatEquals(R13, -1))
-		{
-			E2 = PI / 2;
-			E1 = E3 + delta;
-		}
-		else
-		{
-			E2 = -PI / 2;
-			E1 = -E3 + delta;
-		}
-	}
-	else
-	{
-		E2 = -asin(R13);
-		E1 = atan2(R23 / cos(E2), R33 / cos(E2));
-		E3 = atan2(R12 / cos(E2), R11 / cos(E2));
-	}
-
-	VertexUnPad eulers = VertexUnPad(E1, E2, E3);
-
-	eulers.x *= Rad2Deg;
-	eulers.y *= Rad2Deg;
-	eulers.z *= Rad2Deg;
-
-	return eulers;
-}
-
 string EulerAnglesToString(VertexUnPad eulers)
 {
 	return "X:" + to_string(eulers.x) + "  Y:" + to_string(eulers.y) + "  Z:" + to_string(eulers.z);
-}
-
-
-
-void RotateByX(VertexUnPad& vec, float alpha)
-{
-	float Y = vec.y;
-	float Z = vec.z;
-
-	vec.y = Y * cos(alpha) - Z * sin(alpha);
-	vec.z = Y * sin(alpha) + Z * cos(alpha);
-}
-
-void RotateByY(VertexUnPad& vert, float alpha)
-{
-	float X = vert.x;
-	float Z = vert.z;
-
-	vert.x = X * cos(alpha) + Z * sin(alpha);
-	vert.z = -X * sin(alpha) + Z * cos(alpha);
-}
-
-void RotateByZ(VertexUnPad& vec, float alpha)
-{
-	float X = vec.x;
-	float Y = vec.y;
-
-	vec.x = X * cos(alpha) - Y * sin(alpha);
-	vec.y = X * sin(alpha) + Y * cos(alpha);
-}
-
-void RotateMatByVector(MatrixUnPad &objMat, VertexUnPad euler)
-{
-	RotateByX(objMat.m[0], euler.x);
-	RotateByX(objMat.m[1], euler.x);
-	RotateByX(objMat.m[2], euler.x);
-
-	RotateByY(objMat.m[0], euler.y);
-	RotateByY(objMat.m[1], euler.y);
-	RotateByY(objMat.m[2], euler.y);
-
-	RotateByZ(objMat.m[0], euler.z);
-	RotateByZ(objMat.m[1], euler.z);
-	RotateByZ(objMat.m[2], euler.z);
 }
 
 void EditObject()
@@ -852,31 +580,33 @@ again:;
 	cout << "Which object do you want to edit?\n";
 	cin >> id;
 
-	if (id < 0 || id >= loadedObjects.size())
+	if (id < 0 || id >= GetLoadedObjects()->size())
 	{
 		cout << "ID is out of bounds!\n";
 		system("pause");
 		goto again;
 	}
 
+	LevelObject* editObject = GetLoadedObjects()->at(id);
+
 	int choice;
 	do
 	{
 		system("cls");
-		cout << "Currently editing: {" << loadedObjects[id]->TypeName << "}\n"
+		cout << "Currently editing: {" << editObject->TypeName << "}\n"
 			<< "What do you want to change?"
-			<< "\n1. Type name: " << loadedObjects[id]->TypeName
-			<< "\n2. Main weapon: " << loadedObjects[id]->AttachName
-			<< "\n3. Position: " << CheckUnits(loadedObjects[id]->ObjMatrix.t.x) << " " << CheckUnits(loadedObjects[id]->ObjMatrix.t.y) << " " << CheckUnits(loadedObjects[id]->ObjMatrix.t.z)
-			<< "\n4. Rotation: " << EulerAnglesToString(MatrixToEulerAngles(loadedObjects[id]->ObjMatrix.m)) << " degrees"
-			<< "\n5. Normal flag: " << to_string(loadedObjects[id]->ObjMatrix.Normal)
-			<< "\n6. Renderable ID: " << to_string(loadedObjects[id]->RenderableId)
-			<< "\n7. Controllable ID: " << to_string(loadedObjects[id]->ControllableId)
-			<< "\n8. ShadowFlags Code: " << to_string(loadedObjects[id]->ShadowFlags)
-			<< "\n9. Permanent flag: " << to_string(loadedObjects[id]->Permanent)
-			<< "\n10. Team number: " << to_string(loadedObjects[id]->TeamNumber)
-			<< "\n11. Specific data code: " << to_string(loadedObjects[id]->SpecificData)
-			<< "\n12. Change addons: " << ExtraDataToString(loadedObjects[id]->ExtraDataSize)
+			<< "\n1. Type name: " << editObject->TypeName
+			<< "\n2. Main weapon: " << editObject->AttachName
+			<< "\n3. Position: " << CheckUnits(editObject->ObjMatrix.t.x) << " " << CheckUnits(editObject->ObjMatrix.t.y) << " " << CheckUnits(editObject->ObjMatrix.t.z)
+			<< "\n4. Rotation: " << EulerAnglesToString(MatrixToEulerAngles(editObject->ObjMatrix.m)) << " degrees"
+			<< "\n5. Normal flag: " << to_string(editObject->ObjMatrix.Normal)
+			<< "\n6. Renderable ID: " << to_string(editObject->RenderableId)
+			<< "\n7. Controllable ID: " << to_string(editObject->ControllableId)
+			<< "\n8. ShadowFlags Code: " << to_string(editObject->ShadowFlags)
+			<< "\n9. Permanent flag: " << to_string(editObject->Permanent)
+			<< "\n10. Team number: " << to_string(editObject->TeamNumber)
+			<< "\n11. Specific data code: " << to_string(editObject->SpecificData)
+			<< "\n12. Change addons: " << ExtraDataToString(editObject->ExtraDataSize)
 			<< "13. Stop\n";
 
 		cin >> choice;
@@ -889,77 +619,68 @@ again:;
 		switch (choice)
 		{
 		case 1:
-			loadedObjects[id]->SetTypeName(GetTypeName());
+			editObject->SetTypeName(GetTypeName());
 			needsToSave = true;
 			break;
 
 		case 2:
-			loadedObjects[id]->SetAttachName(GetAttachName());
+			editObject->SetAttachName(GetAttachName());
 			needsToSave = true;
 			break;
 
 		case 3:
-			loadedObjects[id]->ObjMatrix.t = GetPosition();
+			editObject->ObjMatrix.t = GetPosition();
 			needsToSave = true;
 			break;
 
 		case 4:
-			cout << "What angle do you want your object to look at? from -180 to 180\nx(up/down):";
-			cin >> angles.x;
-			cout << "y(left/right/around):";
-			cin >> angles.y;
-			cout << "z(forward swirl):";
-			cin >> angles.z;
+			angles = GetRotation();
 
-			angles.x *= Deg2Rad;
-			angles.y *= Deg2Rad;
-			angles.z *= Deg2Rad;
-
-			loadedObjects[id]->ResetRotation();
-			RotateMatByVector(loadedObjects[id]->ObjMatrix, angles);
+			editObject->ResetRotation();
+			RotateMatByVector(editObject->ObjMatrix, angles);
 			needsToSave = true;
 			break;
 
 		case 5:
 			cout << "Enter normal flag 0/1\n";
-			cin >> loadedObjects[id]->ObjMatrix.Normal;
+			cin >> editObject->ObjMatrix.Normal;
 			needsToSave = true;
 			break;
 
 		case 6:
 			cout << "Enter Renderable ID\n";
-			cin >> loadedObjects[id]->RenderableId;
+			cin >> editObject->RenderableId;
 			needsToSave = true;
 			break;
 
 		case 7:
 			cout << "Enter Controllable ID\n";
-			cin >> loadedObjects[id]->ControllableId;
+			cin >> editObject->ControllableId;
 			needsToSave = true;
 			break;
 
 		case 8:
 			cout << "Enter ShadowFlags Code\n";
-			cin >> loadedObjects[id]->ShadowFlags;
+			cin >> editObject->ShadowFlags;
 			needsToSave = true;
 			break;
 
 		case 9:
 			cout << "Enter permanent flag (0-255)\n";
 			cin >> tmp_u_int;
-			loadedObjects[id]->Permanent = (char)tmp_u_int;
+			editObject->Permanent = (char)tmp_u_int;
 			needsToSave = true;
 			break;
 
 		case 10:
 			cout << "Enter team number\n";
-			cin >> loadedObjects[id]->TeamNumber;
+			cin >> editObject->TeamNumber;
 			needsToSave = true;
 			break;
 
 		case 11:
 			cout << "Specific data code\n";
-			cin >> loadedObjects[id]->SpecificData;
+			cin >> editObject->SpecificData;
 			needsToSave = true;
 			break;
 
@@ -968,39 +689,39 @@ again:;
 			chooseAgain:;
 			system("cls");
 
-			cout << ExtraDataToString(loadedObjects[id]->ExtraDataSize) << "Do you want to:\n1. Add an addon\n2. Remove it\n3. Replace\n4. Stop\n";
+			cout << ExtraDataToString(editObject->ExtraDataSize) << "Do you want to:\n1. Add an addon\n2. Remove it\n3. Replace\n4. Stop\n";
 			cin >> choice;
 
 			if (choice == 1)
-				AddAddon(loadedObjects[id]);
+				AddAddon(editObject);
 			else if (choice == 2)
 			{
-				cout << "Choose an addon to remove:\n" << ExtraDataToString(loadedObjects[id]->ExtraDataSize);
+				cout << "Choose an addon to remove:\n" << ExtraDataToString(editObject->ExtraDataSize);
 				cin >> choice;
 
-				if (choice < 0 || choice >= loadedObjects[id]->ExtraDataSize.size())
+				if (choice < 0 || choice >= editObject->ExtraDataSize.size())
 				{
 					cout << "Choice is out of range!\n";
 					system("pause");
 					goto chooseAgain;
 				}
 
-				loadedObjects[id]->ExtraDataSize.erase(loadedObjects[id]->ExtraDataSize.begin() + choice);
-				loadedObjects[id]->dwSize -= 4;
+				editObject->ExtraDataSize.erase(editObject->ExtraDataSize.begin() + choice);
+				editObject->dwSize -= 4;
 			}
 			else if (choice == 3)
 			{
-				cout << "Choose an addon to replace:\n" << ExtraDataToString(loadedObjects[id]->ExtraDataSize);
+				cout << "Choose an addon to replace:\n" << ExtraDataToString(editObject->ExtraDataSize);
 				cin >> choice;
 
-				if (choice < 0 || choice >= loadedObjects[id]->ExtraDataSize.size())
+				if (choice < 0 || choice >= editObject->ExtraDataSize.size())
 				{
 					cout << "Choice is out of range!\n";
 					system("pause");
 					goto chooseAgain;
 				}
 
-				ReplaceAddon(loadedObjects[id], choice);
+				ReplaceAddon(editObject, choice);
 			}
 			else
 				break;
@@ -1030,20 +751,7 @@ void PrintCredits()
 	system("pause");
 }
 
-string MetresOn()
-{
-	if (usingMetres)
-		return "ON";
-	else
-		return "OFF";
-}
-
-void ToggleMetres()
-{
-	usingMetres = !usingMetres;
-}
-
-int GetRandomInt(int from, int to) // from - inclusive. to - exclusive
+size_t GetRandomInt(size_t from, size_t to) // from - inclusive. to - exclusive
 {
 	return rand() % (to - from) + from;
 }
@@ -1052,16 +760,20 @@ void RandomizeAllUnits()
 {
 	unordered_map<string, vector<LevelObject*>> differentUnits;
 
-	for (size_t i = 0; i < loadedObjects.size(); i++)
-		differentUnits[loadedObjects[i]->TypeName].push_back(loadedObjects[i]);
+	for (size_t i = 0; i < GetLoadedObjects()->size(); i++)
+	{
+		LevelObject* object = GetLoadedObjects()->at(i);
+		differentUnits[object->TypeName].push_back(object);
+	}
 
 	unordered_map<string, vector<LevelObject*>>::iterator it = differentUnits.begin();
 
-	vector<string> choiceObjs = knownObjs;
+	auto objects = GetKnownObjects();
+	vector<string> choiceObjs = *objects; // Hopefully does a deep copy
 
 	while (it != differentUnits.end() && choiceObjs.size() > 0)
 	{
-		int rnd = GetRandomInt(0, choiceObjs.size());
+		size_t rnd = GetRandomInt(0, choiceObjs.size());
 		string randomType = choiceObjs[rnd];
 		choiceObjs.erase(choiceObjs.begin() + rnd);
 
@@ -1086,12 +798,15 @@ void RandomizeOneUnit()
 {
 	unordered_map<string, vector<LevelObject*>> differentUnits;
 
-	for (size_t i = 0; i < loadedObjects.size(); i++)
-		differentUnits[loadedObjects[i]->TypeName].push_back(loadedObjects[i]);
+	for (size_t i = 0; i < GetLoadedObjects()->size(); i++)
+	{
+		LevelObject* object = GetLoadedObjects()->at(i);
+		differentUnits[object->TypeName].push_back(object);
+	}
 
 	unordered_map<string, vector<LevelObject*>>::iterator it = differentUnits.begin();
 
-	int itRnd = GetRandomInt(0, differentUnits.size());
+	size_t itRnd = GetRandomInt(0, differentUnits.size());
 	for (size_t i = 0; i < itRnd; i++)
 		it++;
 
@@ -1103,10 +818,11 @@ void RandomizeOneUnit()
 
 	string randomType;
 	bool notOk = true;
+	auto knownObjects = GetKnownObjects();
 	do
 	{
-		int rnd = GetRandomInt(0, knownObjs.size());
-		randomType = knownObjs[rnd];
+		size_t rnd = GetRandomInt(0, knownObjects->size());
+		randomType = knownObjects->at(rnd);
 
 		cout << "From " << from << " To: " << randomType << '\n'
 		<< "Is that ok? Y/N (S = stop)\n";
@@ -1165,7 +881,7 @@ void Ranzomizer()
 
 int main(int argc, char* argv[])
 {
-	srand(time(NULL));
+	srand((unsigned int)time(NULL));
 
 	string path = "";
 
@@ -1225,8 +941,9 @@ int main(int argc, char* argv[])
 				<< "8. Save file\n"
 				<< "9. Use meters instead of game units ["<< MetresOn() <<"]\n"
 				<< "10. Randomizer\n"
-				<< "11. Credits\n"
-				<< "12. Quit\n";
+				<< "11. Presets\n"
+				<< "12. Credits\n"
+				<< "13. Quit\n";
 
 			int choice = -1;
 			cin >> choice;
@@ -1241,7 +958,7 @@ int main(int argc, char* argv[])
 			else if (choice == 3)
 				FindObject();
 			else if (choice == 4)
-				AddObject();
+				AddSceneObject();
 			else if (choice == 5)
 				EditObject();
 			else if (choice == 6)
@@ -1255,6 +972,8 @@ int main(int argc, char* argv[])
 			else if (choice == 10)
 				Ranzomizer();
 			else if (choice == 11)
+				GoToPresets();
+			else if (choice == 12)
 				PrintCredits();
 			else
 				editing = false;

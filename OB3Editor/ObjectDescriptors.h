@@ -12,6 +12,12 @@ public:
 
 	VertexUnPad() { x = y = z = 0; }
 	VertexUnPad(float X, float Y, float Z) { x = X; y = Y; z = Z; }
+
+	bool LoadASCII(string data);
+	string ToString();
+
+	VertexUnPad operator +(VertexUnPad other);
+	VertexUnPad operator -(VertexUnPad other);
 };
 
 class MatrixUnPad
@@ -72,3 +78,8 @@ public:
 
 	void ResetRotation();
 };
+
+void RotateByX(VertexUnPad& vec, float alpha);
+void RotateByY(VertexUnPad& vert, float alpha);
+void RotateByZ(VertexUnPad& vec, float alpha);
+void RotateMatByVector(MatrixUnPad& objMat, VertexUnPad euler);

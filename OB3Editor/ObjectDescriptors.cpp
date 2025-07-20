@@ -1,4 +1,32 @@
+
 #include <ObjectDescriptors.h>
+#include <Files.h>
+
+bool VertexUnPad::LoadASCII(string data)
+{
+	ConsumeSeekToChar(data, '{');
+	x = ConsumeToFloat(data);
+	y = ConsumeToFloat(data);
+	z = ConsumeToFloat(data);
+	ConsumeSeekToChar(data);
+
+	return false;
+}
+
+string VertexUnPad::ToString()
+{
+	return "{" + to_string(x) + " " + to_string(y) + " " + to_string(z) + "}";
+}
+
+VertexUnPad VertexUnPad::operator+(VertexUnPad other)
+{
+	return VertexUnPad(x + other.x, y + other.y, z + other.z);
+}
+
+VertexUnPad VertexUnPad::operator-(VertexUnPad other)
+{
+	return VertexUnPad(x - other.x, y - other.y, z - other.z);
+}
 
 LevelObject::LevelObject()
 {
@@ -53,11 +81,11 @@ void LevelObject::SetTypeName(string name)
 	for (int i = 0; i < 32; i++)
 		TypeName[i] = 0;
 
-	int m = 32;
+	size_t m = 32;
 	if (name.length() < m)
 		m = name.length();
 
-	for (int i = 0; i < m; i++)
+	for (size_t i = 0; i < m; i++)
 		TypeName[i] = name[i];
 }
 
@@ -86,4 +114,46 @@ void LevelObject::ResetRotation()
 
 	ObjMatrix.t = pos;
 	ObjMatrix.Normal = normal; // Wtf is normal, like mesh data normal?
+}
+
+void RotateByX(VertexUnPad& vec, float alpha)
+{
+	float Y = vec.y;
+	float Z = vec.z;
+
+	vec.y = Y * cosf(alpha) - Z * sinf(alpha);
+	vec.z = Y * sinf(alpha) + Z * cosf(alpha);
+}
+
+void RotateByY(VertexUnPad& vert, float alpha)
+{
+	float X = vert.x;
+	float Z = vert.z;
+
+	vert.x = X * cos(alpha) + Z * sin(alpha);
+	vert.z = -X * sin(alpha) + Z * cos(alpha);
+}
+
+void RotateByZ(VertexUnPad& vec, float alpha)
+{
+	float X = vec.x;
+	float Y = vec.y;
+
+	vec.x = X * cosf(alpha) - Y * sinf(alpha);
+	vec.y = X * sinf(alpha) + Y * cosf(alpha);
+}
+
+void RotateMatByVector(MatrixUnPad& objMat, VertexUnPad euler)
+{
+	RotateByX(objMat.m[0], euler.x);
+	RotateByX(objMat.m[1], euler.x);
+	RotateByX(objMat.m[2], euler.x);
+
+	RotateByY(objMat.m[0], euler.y);
+	RotateByY(objMat.m[1], euler.y);
+	RotateByY(objMat.m[2], euler.y);
+
+	RotateByZ(objMat.m[0], euler.z);
+	RotateByZ(objMat.m[1], euler.z);
+	RotateByZ(objMat.m[2], euler.z);
 }

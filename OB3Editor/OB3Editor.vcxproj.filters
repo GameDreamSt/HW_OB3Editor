@@ -21,6 +21,21 @@
     <ClCompile Include="ObjectDescriptors.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Presets.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Files.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Object.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Units.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="KnownObjs.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Files.h">
@@ -30,6 +45,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="KnownObjs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Presets.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Object.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Units.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
