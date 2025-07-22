@@ -15,3 +15,5 @@ float CheckUnits(float units);
 bool UsingMetres();
 std::string MetresOn();
 void ToggleMetres();
+void SaveUnitsSettings();
+void LoadUnitsSettings();

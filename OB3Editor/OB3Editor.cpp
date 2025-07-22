@@ -921,6 +921,8 @@ int main(int argc, char* argv[])
 
 		string file = GetFileName(path);
 
+		LoadUnitsSettings();
+
 		do
 		{
 			editing = true;

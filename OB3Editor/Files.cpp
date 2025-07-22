@@ -90,7 +90,7 @@ string ConsumeSeekToChar(string &data, char seekToChar)
 		}
 	}
 
-	return "";
+	return data;
 }
 
 float ConsumeToFloat(string& data) { return ConsumeToFloat(data, ' '); }
@@ -98,4 +98,16 @@ float ConsumeToFloat(string& data, char seekToChar)
 {
 	string sub = ConsumeSeekToChar(data);
 	return stof(sub);
+}
+
+bool ConsumeToBool(string& data) { return ConsumeToBool(data, ' '); }
+bool ConsumeToBool(string& data, char seekToChar)
+{
+	string sub = ConsumeSeekToChar(data);
+	if (sub == "true" || sub == "True" || sub == "TRUE")
+		return true;
+	if (sub == "false" || sub == "False" || sub == "FALSE")
+		return false;
+
+	return stoi(sub) == 1;
 }
