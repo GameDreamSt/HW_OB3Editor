@@ -186,7 +186,7 @@ void PrintLowInfo()
 	{
 		LevelObject* object = loadedObjects[i];
 		VertexUnPad checkedUnits(CheckUnits(object->ObjMatrix.t.x), CheckUnits(object->ObjMatrix.t.y), CheckUnits(object->ObjMatrix.t.z));
-		tempString +=  to_string(i) + ". '" + object->TypeName + "' " + checkedUnits.ToString() + '\n';
+		tempString +=  to_string(i) + ". '" + object->TypeName + "' " + checkedUnits.ToStringSpaced() + '\n';
 	}
 
 	cout << tempString;

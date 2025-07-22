@@ -18,6 +18,11 @@ string VertexUnPad::ToString()
 	return "{" + to_string(x) + " " + to_string(y) + " " + to_string(z) + "}";
 }
 
+string VertexUnPad::ToStringSpaced()
+{
+	return "  " + to_string(x) + " " + to_string(y) + " " + to_string(z) + "  ";
+}
+
 VertexUnPad VertexUnPad::operator+(VertexUnPad other)
 {
 	return VertexUnPad(x + other.x, y + other.y, z + other.z);

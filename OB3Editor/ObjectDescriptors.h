@@ -15,6 +15,7 @@ public:
 
 	bool LoadASCII(string data);
 	string ToString();
+	string ToStringSpaced();
 
 	VertexUnPad operator +(VertexUnPad other);
 	VertexUnPad operator -(VertexUnPad other);
