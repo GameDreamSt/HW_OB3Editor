@@ -259,7 +259,9 @@ void AddMode()
 		newObj->RenderableId = GetUnusedRenderableID();
 		newObj->entryID = (unsigned long)((*GetLoadedObjects()).size());
 
-		newObj->ObjMatrix.t = entry.offsetPosition + commonPosition;
+		VertexUnPad rotatedOffset = entry.offsetPosition;
+		RotateByY(rotatedOffset, commonRotation.y);
+		newObj->ObjMatrix.t = rotatedOffset + commonPosition;
 		newObj->ResetRotation();
 		RotateMatByVector(newObj->ObjMatrix, entry.offsetRotationEuler + commonRotation);
 
