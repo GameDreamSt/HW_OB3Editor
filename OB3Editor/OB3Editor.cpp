@@ -85,8 +85,19 @@ string MatrixToString(MatrixUnPad mat)
 	return out;
 }
 
-int addons[9] = { 0x50 , 0x51 , 0x52 ,0x53, 0x54 ,0x56, 0x57, 0x58, 0x59 };
-string addonNames[9] = { "ARMOUR" , "CLOAK" , "RECHARGE" ,"FARADAYCAGE", "SCAVUNIT" ,"SHIELD", "SOULUNIT", "REPAIRUNIT", "CARRIERGUNS" };
+string FindSoulNameFromID(unsigned long ID)
+{
+	auto souls = GetKnownSouls();
+
+	for (size_t i = 0; i < souls->size(); i++)
+	{
+		if (souls->at(i).second == ID)
+			return souls->at(i).first;
+	}
+
+	return "UNKNOWN";
+}
+
 string ExtraDataToString(vector<unsigned long>& extraData)
 {
 	string out = "";
@@ -96,13 +107,23 @@ string ExtraDataToString(vector<unsigned long>& extraData)
 
 	out += "Amount of addons: " + to_string(extraData.size()) + '\n';
 
+	auto addons = GetKnownAddons();
 	for (unsigned long i = 0; i < extraData.size(); i++)
 		for (int j = 0; j < 9; j++)
 		{
-			unsigned long addonTag = extraData[i];
-			if (addonTag == addons[j])
+			unsigned long addonTag = extraData[i] & 0xFF;
+			if (addonTag == addons->at(j).second)
 			{
-				out += "    " + to_string(i) + ". " + addonNames[j] + '\n';
+				out += "    " + to_string(i) + ". " + addons->at(j).first;
+
+				if (addonTag == 0x57) // Addon soul unit
+				{
+					int soulID = extraData[i] & 0xFFFF0000;
+					soulID = soulID >> 16;
+					out += " " + FindSoulNameFromID(soulID);
+				}
+
+				out += "\n";
 				break;
 			}
 		}
@@ -411,16 +432,17 @@ int AddAddon(LevelObject* newObj)
 			return false;
 		}
 
-		unsigned long ul = addons->at(type).second; // XX 00 00 00
-		if (ul == 87) // It's a soulcatcher, add a soulname in a hacky way... these damn devs
+		unsigned long addonID = addons->at(type).second; // XX 00 00 00
+		if (addonID == 87) // It's a soulcatcher, add a soulname in a hacky way... these damn devs
 		{
-			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", GetKnownSouls());
+			auto knownSouls = GetKnownSouls();
+			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", knownSouls);
 
-			choice = addons->at(choice).second << 16; // YY 00 00 00 -> 00 00 YY 00
-			ul = ul | choice; // XX 00 YY 00
+			choice = knownSouls->at(choice).second << 16; // YY 00 00 00 -> 00 00 YY 00
+			addonID = addonID | choice; // XX 00 YY 00
 		}
 
-		newObj->ExtraDataSize.push_back(ul);
+		newObj->ExtraDataSize.push_back(addonID);
 		newObj->dwSize += 4; // More data than expected, needs to be bigger
 	}
 
