@@ -410,6 +410,15 @@ unsigned long GetTeamNumber()
 	return teamNumber;
 }
 
+void ProcessSoulcatcherChoice(unsigned long &addonID)
+{
+	auto knownSouls = GetKnownSouls();
+	unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", knownSouls);
+
+	choice = knownSouls->at(choice).second << 16; // YY 00 00 00 -> 00 00 YY 00
+	addonID = addonID | choice; // XX 00 YY 00
+}
+
 int AddAddon(LevelObject* newObj)
 {
 	auto addons = GetKnownAddons();
@@ -434,13 +443,7 @@ int AddAddon(LevelObject* newObj)
 
 		unsigned long addonID = addons->at(type).second; // XX 00 00 00
 		if (addonID == 87) // It's a soulcatcher, add a soulname in a hacky way... these damn devs
-		{
-			auto knownSouls = GetKnownSouls();
-			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", knownSouls);
-
-			choice = knownSouls->at(choice).second << 16; // YY 00 00 00 -> 00 00 YY 00
-			addonID = addonID | choice; // XX 00 YY 00
-		}
+			ProcessSoulcatcherChoice(addonID);
 
 		newObj->ExtraDataSize.push_back(addonID);
 		newObj->dwSize += 4; // More data than expected, needs to be bigger
@@ -470,16 +473,11 @@ void ReplaceAddon(LevelObject* newObj, int where)
 			return;
 		}
 
-		unsigned long ul = addons->at(type).second; // XX 00 00 00
-		if (ul == 87) // It's a soulcatcher, add a soulname in a hacky way... these damn devs
-		{
-			unsigned long choice = GetTypeChoicePair("Choose the soul for your soulcatcher\n", GetKnownSouls());
+		unsigned long addonID = addons->at(type).second; // XX 00 00 00
+		if (addonID == 87) // It's a soulcatcher, add a soulname in a hacky way... these damn devs
+			ProcessSoulcatcherChoice(addonID);
 
-			choice = addons->at(choice).second << 16; // YY 00 00 00 -> 00 00 YY 00
-			ul = ul | choice; // XX 00 YY 00
-		}
-
-		newObj->ExtraDataSize[where] = ul;
+		newObj->ExtraDataSize[where] = addonID;
 	}
 }
 
