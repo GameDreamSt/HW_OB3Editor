@@ -90,20 +90,29 @@ string ConsumeSeekToChar(string &data, char seekToChar)
 		}
 	}
 
-	return data;
+	string sub = data;
+	data.clear();
+	return sub;
 }
 
 float ConsumeToFloat(string& data) { return ConsumeToFloat(data, ' '); }
 float ConsumeToFloat(string& data, char seekToChar)
 {
-	string sub = ConsumeSeekToChar(data);
+	string sub = ConsumeSeekToChar(data, seekToChar);
 	return stof(sub);
+}
+
+int ConsumeToInt(string& data) { return ConsumeToInt(data, ' '); }
+int ConsumeToInt(string& data, char seekToChar)
+{
+	string sub = ConsumeSeekToChar(data, seekToChar);
+	return stoi(sub);
 }
 
 bool ConsumeToBool(string& data) { return ConsumeToBool(data, ' '); }
 bool ConsumeToBool(string& data, char seekToChar)
 {
-	string sub = ConsumeSeekToChar(data);
+	string sub = ConsumeSeekToChar(data, seekToChar);
 	if (sub == "true" || sub == "True" || sub == "TRUE")
 		return true;
 	if (sub == "false" || sub == "False" || sub == "FALSE")

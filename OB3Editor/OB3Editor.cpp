@@ -394,7 +394,7 @@ void SaveFile()
 	
 	if (!write.is_open())
 	{
-		cout << "Failed to create a save file?\n";
+		cout << "Failed to create a save file!\n";
 		system("pause");
 		return;
 	}
@@ -573,38 +573,51 @@ void RemoveObject()
 {
 	PrintLowInfo();
 
-again:;
+	string multiID;
+	cout << "Which object do you want to remove (-1 to stop, can enter multiple)?\n";
+	std::cin.ignore();
+	getline(std::cin, multiID);
 
-	int id;
-	cout << "Which object do you want to remove?\n";
-	cin >> id;
+	if (multiID == "-1")
+		return;
 
-	if (id < 0 || id >= GetLoadedObjects()->size())
+	auto allObjects = GetLoadedObjects();
+	while (multiID.size() > 0)
 	{
-		cout << "ID is out of bounds!\n";
-		system("pause");
-		goto again;
+		int id = ConsumeToInt(multiID);
+
+		if (id < 0 || id >= allObjects->size())
+		{
+			cout << "ID " << id << " is out of bounds of " << allObjects->size() << "!\n";
+			continue;
+		}
+
+		LevelObject* object = allObjects->at(id);
+		cout << id << " " << object->TypeName << " removed!\n";
+
+		delete object;
+		allObjects->at(id) = nullptr;
+		needsToSave = true;
 	}
 
-	string name = GetLoadedObjects()->at(id)->TypeName;
+	for (int i = allObjects->size() - 1; i >= 0; i--)
+	{
+		if (allObjects->at(i) == nullptr)
+		{
+			allObjects->erase(allObjects->begin() + i);
+		}
+	}
+	RefreshLoadedObjectIDs();
 
-	delete GetLoadedObjects()->at(id);
-	GetLoadedObjects()->erase(GetLoadedObjects()->begin() + id);
-
-	for (int i = id; i < GetLoadedObjects()->size(); i++)
-		GetLoadedObjects()->at(i)->entryID = i;
-
-	needsToSave = true;
-
-	cout << id << " " << name << " removed!\n";
 	system("pause");
 }
 
-void RemoveAllObjects()
+vector<LevelObject*> QueryFindObjects(string queryString)
 {
+	vector<LevelObject*> empty;
 	int choice;
 	system("cls");
-	cout << "Which objects would you like to remove?"
+	cout << queryString
 		<< "\n1. By type name"
 		<< "\n2. By main weapon"
 		<< "\n3. By team number"
@@ -620,16 +633,22 @@ void RemoveAllObjects()
 	else if (choice == 3)
 		cout << "Enter the team number to search for (write 'stop' to cancel): ";
 	else
-		return;
+		return empty;
 
 	cin >> searchBy;
 
 	searchBy = StringToLower(searchBy);
 	if (searchBy == "stop")
-		return;
+		return empty;
 
 	choice--;
-	vector<LevelObject*> foundObjects = FindObjects(searchBy, (SearchBy)choice);
+	return FindObjects(searchBy, (SearchBy)choice);
+}
+
+void RemoveAllObjects()
+{
+	auto foundObjects = QueryFindObjects("Which objects would you like to remove?");
+
 	if (foundObjects.size() == 0)
 	{
 		cout << "No objects found!\n";
@@ -660,6 +679,61 @@ void RemoveAllObjects()
 
 	cout << "All objects have been removed!\n";
 	system("pause");
+}
+
+VertexUnPad duplicationOffset = VertexUnPad(0, 150, 0);
+void DuplicateObjects()
+{
+	int choice;
+again:;
+	VertexUnPad checkedUnits(CheckUnits(duplicationOffset.x), CheckUnits(duplicationOffset.y), CheckUnits(duplicationOffset.z));
+	system("cls");
+	cout << "Current duplication offset:" << checkedUnits.ToStringSpaced() << '\n';
+		cout << "What do you want to do?"
+		<< "\n1. Set duplication offset"
+		<< "\n2. Select objects to duplicate"
+		<< "\n3. Go back\n";
+	cin >> choice;
+
+	if (choice == 1)
+	{
+		duplicationOffset = GetPosition();
+		goto again;
+	}
+	else if (choice == 2)
+	{
+		auto foundObjects = QueryFindObjects("Which objects would you like to duplicate?");
+
+		if (foundObjects.size() == 0)
+		{
+			cout << "No objects found!\n";
+			system("pause");
+			return;
+		}
+
+		PrintDetailedInfo(&foundObjects);
+
+		char answer;
+		cout << "Are you sure you want to duplicate these objects? Y/N\n";
+		cin >> answer;
+
+		if (answer != 'Y' && answer != 'y')
+			return;
+
+		auto allObjects = GetLoadedObjects();
+		for (size_t i = 0; i < foundObjects.size(); i++)
+		{
+			LevelObject* object = foundObjects[i];
+			LevelObject* objectCopy = new LevelObject();
+			*objectCopy = *object;
+			objectCopy->entryID = allObjects->size();
+			objectCopy->ObjMatrix.t = objectCopy->ObjMatrix.t + duplicationOffset;
+			allObjects->push_back(objectCopy);
+		}
+
+		cout << "All objects have been duplicated!\n";
+		system("pause");
+	}
 }
 
 float Magnitude(VertexUnPad foo)
@@ -1056,12 +1130,13 @@ int main(int argc, char* argv[])
 				<< "5. Edit object\n"
 				<< "6. Remove object\n"
 				<< "7. Remove all objects\n"
-				<< "8. Save file\n"
-				<< "9. Use meters instead of game units ["<< MetresOn() <<"]\n"
-				<< "10. Randomizer\n"
-				<< "11. Presets\n"
-				<< "12. Credits\n"
-				<< "13. Quit\n";
+				<< "8. Duplicate objects\n"
+				<< "9. Save file\n"
+				<< "10. Use meters instead of game units ["<< MetresOn() <<"]\n"
+				<< "11. Randomizer\n"
+				<< "12. Presets\n"
+				<< "13. Credits\n"
+				<< "14. Quit\n";
 
 			int choice = -1;
 			cin >> choice;
@@ -1084,14 +1159,16 @@ int main(int argc, char* argv[])
 			else if (choice == 7)
 				RemoveAllObjects();
 			else if (choice == 8)
-				SaveFile();
+				DuplicateObjects();
 			else if (choice == 9)
-				ToggleMetres();
+				SaveFile();
 			else if (choice == 10)
-				Ranzomizer();
+				ToggleMetres();
 			else if (choice == 11)
-				GoToPresets();
+				Ranzomizer();
 			else if (choice == 12)
+				GoToPresets();
+			else if (choice == 13)
 				PrintCredits();
 			else
 				editing = false;
