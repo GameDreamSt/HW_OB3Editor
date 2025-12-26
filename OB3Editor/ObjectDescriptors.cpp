@@ -20,7 +20,7 @@ string VertexUnPad::ToString()
 
 string VertexUnPad::ToStringSpaced()
 {
-	return "  " + to_string(x) + " " + to_string(y) + " " + to_string(z) + "  ";
+	return "  " + FloatToString(x) + " " + FloatToString(y) + " " + FloatToString(z) + "  ";
 }
 
 VertexUnPad VertexUnPad::operator+(VertexUnPad other)

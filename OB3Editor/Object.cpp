@@ -176,6 +176,14 @@ int GetUnusedRenderableID()
 }
 
 vector<LevelObject*>* GetLoadedObjects() { return &loadedObjects; }
+void RefreshLoadedObjectIDs()
+{
+	for (size_t i = 0; i < loadedObjects.size(); i++)
+	{
+		loadedObjects[i]->entryID = (unsigned long)i;
+	}
+}
+
 string tempString;
 
 void PrintLowInfo()
@@ -186,7 +194,7 @@ void PrintLowInfo()
 	{
 		LevelObject* object = loadedObjects[i];
 		VertexUnPad checkedUnits(CheckUnits(object->ObjMatrix.t.x), CheckUnits(object->ObjMatrix.t.y), CheckUnits(object->ObjMatrix.t.z));
-		tempString +=  to_string(i) + ". '" + object->TypeName + "' " + checkedUnits.ToStringSpaced() + '\n';
+		tempString +=  to_string(i) + ". " + object->TypeName + "\t" + checkedUnits.ToStringSpaced() + '\n';
 	}
 
 	cout << tempString;

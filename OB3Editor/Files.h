@@ -14,3 +14,4 @@ float ConsumeToFloat(std::string& data);
 float ConsumeToFloat(std::string& data, char seekToChar);
 bool ConsumeToBool(std::string& data);
 bool ConsumeToBool(std::string& data, char seekToChar);
+std::string FloatToString(float var, int precision = 2);

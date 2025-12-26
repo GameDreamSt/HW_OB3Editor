@@ -111,3 +111,19 @@ bool ConsumeToBool(string& data, char seekToChar)
 
 	return stoi(sub) == 1;
 }
+
+string FloatToString(float var, int precision)
+{
+	int whole = var;
+	int multiplyBy = pow(10, precision);
+	int remainder = (int)(var * multiplyBy) - whole * multiplyBy;
+	if (remainder > 0)
+		return to_string(whole) + "." + to_string(remainder);
+	else
+	{
+		string returnStr = to_string(whole) + ".";
+		for (int i = 0; i < precision; i++)
+			returnStr.push_back('0');
+		return returnStr;
+	}
+}

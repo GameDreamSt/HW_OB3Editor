@@ -14,5 +14,6 @@ VertexUnPad GetPosition();
 VertexUnPad GetRotation();
 int GetUnusedRenderableID();
 std::vector<LevelObject*>* GetLoadedObjects();
+void RefreshLoadedObjectIDs();
 void PrintLowInfo();
 VertexUnPad MatrixToEulerAngles(VertexUnPad m[3]);

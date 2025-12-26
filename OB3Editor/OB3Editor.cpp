@@ -131,9 +131,23 @@ string ExtraDataToString(vector<unsigned long>& extraData)
 	return out;
 }
 
+string TeamNumberToString(long number)
+{
+	switch (number)
+	{
+		case -1: return "(Neutral)";
+		case 0: return "(Player)";
+		default: return "";
+	}
+}
+
 void PrintInfoAboutObject(LevelObject* objectInfo)
 {
 	string info = "";
+
+	long visualTeamNumber = objectInfo->TeamNumber;
+	if (visualTeamNumber == (unsigned long)-1)
+		visualTeamNumber = -1;
 
 	info += "\nEntry: " + to_string(objectInfo->entryID) + '\n';
 	info += "dwSize: " + to_string(objectInfo->dwSize) + '\n';
@@ -144,7 +158,7 @@ void PrintInfoAboutObject(LevelObject* objectInfo)
 	info += "ControllableId: " + to_string(objectInfo->ControllableId) + '\n';
 	info += "ShadowFlags: " + to_string(objectInfo->ShadowFlags) + '\n';
 	info += "Permanent flag: " + to_string(objectInfo->Permanent) + '\n';
-	info += "TeamNumber: " + to_string(objectInfo->TeamNumber) + '\n';
+	info += "TeamNumber: " + to_string(visualTeamNumber) + " " + TeamNumberToString(visualTeamNumber) + '\n';
 	info += "SpecificData: " + to_string(objectInfo->SpecificData) + '\n';
 	info += ExtraDataToString(objectInfo->ExtraDataSize);
 
@@ -281,19 +295,74 @@ void PrintDetailedInfo(vector<LevelObject*>* objects)
 {
 	for (size_t i = 0; i < objects->size(); i++)
 		PrintInfoAboutObject(objects->at(i));
-
-	system("pause");
 }
 
 void PrintDetailedInfo()
 {
 	PrintDetailedInfo(GetLoadedObjects());
+	system("pause");
 }
 
 char asciitolower(char in) {
 	if (in <= 'Z' && in >= 'A')
 		return in - ('Z' - 'z');
 	return in;
+}
+
+string StringToLower(string in)
+{
+	string returnStr = in;
+	transform(returnStr.begin(), returnStr.end(), returnStr.begin(), asciitolower);
+	return returnStr;
+}
+
+enum class SearchBy
+{
+	TypeName,
+	MainWeapon,
+	TeamNumber,
+};
+
+vector<LevelObject*> FindObjects(string nameChunk, SearchBy searchBy = SearchBy::TypeName)
+{
+	vector<LevelObject*> foundObjects;
+
+	string s1;
+	auto objects = GetLoadedObjects();
+	for (size_t i = 0; i < objects->size(); i++)
+	{
+		LevelObject* foundObject = objects->at(i);
+
+		switch (searchBy)
+		{
+			case SearchBy::TypeName:
+				s1 = string(foundObject->TypeName);
+				break;
+
+			case SearchBy::MainWeapon:
+				s1 = string(foundObject->AttachName);
+				break;
+
+			case SearchBy::TeamNumber:
+				s1 = foundObject->TeamNumber == (unsigned long)-1 ? "-1" : to_string(foundObject->TeamNumber);
+				break;
+
+			default:
+				return foundObjects;
+		}
+
+		if (nameChunk.size() > s1.size())
+			continue;
+
+		s1 = StringToLower(s1);
+
+		if (s1.find(nameChunk) == std::string::npos)
+			continue;
+
+		foundObjects.push_back(foundObject);
+	}
+
+	return foundObjects;
 }
 
 void FindObject()
@@ -303,28 +372,9 @@ void FindObject()
 	cin >> nameChunk;
 	cout << '\n';
 
-	transform(nameChunk.begin(), nameChunk.end(), nameChunk.begin(), asciitolower);
+	nameChunk = StringToLower(nameChunk);
 
-	vector<LevelObject*> foundObjects;
-
-	string s1;
-	auto objects = GetLoadedObjects();
-	for (size_t i = 0; i < objects->size(); i++)
-	{
-		LevelObject* foundObject = objects->at(i);
-		s1 = string(foundObject->TypeName);
-
-		if (nameChunk.size() > s1.size())
-			continue;
-
-		transform(s1.begin(), s1.end(), s1.begin(), asciitolower);
-
-		if (s1.find(nameChunk) == std::string::npos)
-			continue;
-
-		foundObjects.push_back(foundObject);
-	}
-
+	vector<LevelObject*> foundObjects = FindObjects(nameChunk);
 	if (foundObjects.size() == 0)
 	{
 		cout << "No objects found... :(\n";
@@ -334,6 +384,7 @@ void FindObject()
 
 	cout << "Found " << to_string(foundObjects.size()) << " objects!\n";
 	PrintDetailedInfo(&foundObjects);
+	system("pause");
 }
 
 bool needsToSave = false;
@@ -551,18 +602,63 @@ again:;
 
 void RemoveAllObjects()
 {
+	int choice;
+	system("cls");
+	cout << "Which objects would you like to remove?"
+		<< "\n1. By type name"
+		<< "\n2. By main weapon"
+		<< "\n3. By team number"
+		<< "\n4. Stop\n";
+
+	cin >> choice;
+
+	string searchBy;
+	if (choice == 1)
+		cout << "Enter the type name to search for (write 'stop' to cancel): ";
+	else if (choice == 2)
+		cout << "Enter the main weapon name to search for (write 'stop' to cancel): ";
+	else if (choice == 3)
+		cout << "Enter the team number to search for (write 'stop' to cancel): ";
+	else
+		return;
+
+	cin >> searchBy;
+
+	searchBy = StringToLower(searchBy);
+	if (searchBy == "stop")
+		return;
+
+	choice--;
+	vector<LevelObject*> foundObjects = FindObjects(searchBy, (SearchBy)choice);
+	if (foundObjects.size() == 0)
+	{
+		cout << "No objects found!\n";
+		system("pause");
+		return;
+	}
+
+	PrintDetailedInfo(&foundObjects);
+
 	char answer;
-	cout << "Are you sure you want to remove ALL objects? Y/N\n";
+	cout << "Are you sure you want to remove ALL of these objects? Y/N\n";
 	cin >> answer;
 
 	if (answer != 'Y' && answer != 'y')
 		return;
 
-	GetLoadedObjects()->clear();
-
 	needsToSave = true;
 
-	cout << "All objects removed!\n";
+	auto allObjects = GetLoadedObjects();
+	for (long i = (long)foundObjects.size() - 1; i >= 0; i--)
+	{
+		LevelObject* object = foundObjects[i];
+		int index = object->entryID;
+		allObjects->erase(allObjects->begin() + index);
+		delete(object);
+	}
+	RefreshLoadedObjectIDs();
+
+	cout << "All objects have been removed!\n";
 	system("pause");
 }
 
