@@ -2,6 +2,7 @@
 #include <Files.h>
 #include <Windows.h>
 #include <iostream>
+#include <filesystem>
 
 using namespace std;
 
@@ -75,6 +76,34 @@ string GetApplicationPath()
 		cout << "Error while getting application path! " << GetLastError() << "\n";
 	path.resize(err);
 	return path;
+}
+
+string GetValidPath(string path)
+{
+	if (!filesystem::exists(path))
+		return path;
+
+	string originalPath = path;
+	string extension = "";
+
+	size_t dotIndex = path.find_last_of('.');
+
+	if (dotIndex != string::npos)
+	{
+		originalPath = path.substr(0, dotIndex);
+		extension = path.substr(dotIndex, path.size() - dotIndex);
+	}
+
+	string newPath;
+	for (int i = 0; i < 100; i++)
+	{
+		newPath = originalPath + "_" + to_string(i) + extension;
+		if (!filesystem::exists(newPath))
+			return newPath;
+	}
+
+	cout << "Failed to find a valid path!\n";
+	return "";
 }
 
 string ConsumeSeekToChar(string& data) { return ConsumeSeekToChar(data, ' '); }

@@ -8,6 +8,7 @@ bool SeekToSlash(std::string path, int& slashI);
 std::string RemovePathLast(std::string path);
 std::string GetFileName(std::string path);
 std::string GetApplicationPath();
+std::string GetValidPath(std::string path);
 std::string ConsumeSeekToChar(std::string& data);
 std::string ConsumeSeekToChar(std::string& data, char seekToChar);
 float ConsumeToFloat(std::string& data);

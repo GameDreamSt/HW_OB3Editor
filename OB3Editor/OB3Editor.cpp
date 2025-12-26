@@ -18,6 +18,7 @@
 #include <Units.h>
 
 using namespace std;
+string mainFilePath = "";
 
 bool ReadAllBytes(string filePath, vector<unsigned char> &data)
 {
@@ -390,11 +391,12 @@ void FindObject()
 bool needsToSave = false;
 void SaveFile()
 {
-	ofstream write("level1.ob3", ios::binary);
+	string saveTopath = GetValidPath(mainFilePath);
+	ofstream write(saveTopath, ios::binary);
 	
 	if (!write.is_open())
 	{
-		cout << "Failed to create a save file!\n";
+		cout << "Failed to create a save file at " << saveTopath << "\n";
 		system("pause");
 		return;
 	}
@@ -731,6 +733,7 @@ again:;
 			allObjects->push_back(objectCopy);
 		}
 
+		needsToSave = true;
 		cout << "All objects have been duplicated!\n";
 		system("pause");
 	}
@@ -1073,18 +1076,16 @@ int main(int argc, char* argv[])
 {
 	srand((unsigned int)time(NULL));
 
-	string path = "";
-
 	// Command line
 	if (argc > 1)
-		path = argv[1];
+		mainFilePath = argv[1];
 
 	bool close = true, editing = true;
 	do
 	{
 		close = true;
 
-		if (path == "")
+		if (mainFilePath == "")
 		{
 			typeFilename:;
 
@@ -1096,20 +1097,20 @@ int main(int argc, char* argv[])
 			fileName = RemoveQuotes(fileName);
 
 			if (!IsAPath(fileName))
-				path = RemovePathLast(string(argv[0])) + "\\" + fileName;
+				mainFilePath = RemovePathLast(string(argv[0])) + "\\" + fileName;
 			else
-				path = fileName;
+				mainFilePath = fileName;
 		}
 		else
-			path = RemoveQuotes(path);
+			mainFilePath = RemoveQuotes(mainFilePath);
 
-		if (!ReadFile(path))
+		if (!ReadFile(mainFilePath))
 		{
 			system("cls");
 			goto typeFilename;
 		}
 
-		string file = GetFileName(path);
+		string file = GetFileName(mainFilePath);
 
 		LoadUnitsSettings();
 
@@ -1177,14 +1178,15 @@ int main(int argc, char* argv[])
 
 		needsToSave = false;
 
+		string answer;
 		printf("Do you wish to continue? Y/N: ");
-		cin >> path;
+		cin >> answer;
 		printf("\n");
 
-		if (path == "Y" || path == "y")
+		if (answer == "Y" || answer == "y")
 			close = false;
 
-		path = "";
+		mainFilePath = "";
 	} while (!close);
 
 	return 0;
